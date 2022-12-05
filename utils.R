@@ -45,7 +45,10 @@ get_first_and_last_week <- function(per_sample_intros, voc_to_analyse){
 
 
 filter_and_plot_national_cases <- function(all_national_cases, date_range, country_iso){
+  print(country_iso)
+  View(all_national_cases)
   filtered_national_cases <- all_national_cases %>% filter(iso_code == country_iso) %>% filter(between(Week, date_range[1], date_range[2]))
+  View(filtered_national_cases)
   ai_df_wk <- filtered_national_cases %>% group_by(Week) %>% summarise(n = sum(new_cases))
   
   nc_bw <- ggplot(ai_df_wk, aes(x = Week, y = n)) + 
@@ -87,6 +90,7 @@ filter_and_plot_samples <- function(per_sample_intros, voc){
 
 make_overall_plot <- function(per_sample_intros, voc, national_cases, restrictions, country_iso){
   fnl <- get_first_and_last_week(per_sample_intros, voc)
+  #View(national_cases)
   nc <- filter_and_plot_national_cases(national_cases, fnl, country_iso)
   #beta_fi <- first_identification(genomes, "20H (Beta,V2)", beta_fnl)
   restrictions <- filter_and_plot_restrictions(restrictions, fnl, country_iso)
