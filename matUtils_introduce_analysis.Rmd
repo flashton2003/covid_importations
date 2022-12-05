@@ -15,17 +15,29 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(readr)
 library(dplyr)
+library(scales)
+library(stringr)
 library(ggplot2)
+library(patchwork)
+library(lubridate)
 library(kableExtra)
 
 ```
 
-## File paths
 
+## Sources
+
+```{r}
+source("utils.R")
+```
+
+## File paths
 
 ```{r filepaths}
 
 malawi_per_sample_intro_handle <- "/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt"
+national_cases_handle <- "/Users/flashton/Dropbox/COVID/our_world_in_data/2022.12.05/owid-covid-data.csv"
+restrictions_handle <- "/Users/flashton/Dropbox/COVID/our_world_in_data/2022.12.05/international-travel-covid.csv"
 
 ```
 
@@ -34,50 +46,75 @@ malawi_per_sample_intro_handle <- "/Users/flashton/Dropbox/COVID/AAP_introductio
 ```{r}
 
 vocs_to_plot <- list("20H (Beta,V2)", "20I (Alpha,V1)", "21A (Delta)", "21I (Delta)", "21J (Delta)", "21K (Omicron)", "21L (Omicron)", "22A (Omicron)", "22B (Omicron)")
+countries_to_include <- c("MWI", "KEN", "ZAF", "VNM", "THA", "IDN", "KHM")
 
 ```
-
-## read in data
-
-```{r}
-
-read_in_per_sample_intros <- function(per_sample_intro_handle, vocs_to_plot){
-  per_sample_intros <- read_delim(per_sample_intro_handle, delim = "\t", escape_double = FALSE, trim_ws = TRUE)
-  per_sample_intros <- per_sample_intros %>%  mutate(voc_for_plots = ifelse(annotation_1 %in% vocs_to_plot, annotation_1, 'not_voc_of_interest'))
-  return(per_sample_intros)
-}
-
-```
-
-
-
-
 
 ## Size distribtion by VOC
 
 ```{r}
 
-plot_size_distribution_by_VOC <- function(per_sample_intros){
+plot_size_distribution_by_VOC_point <- function(per_sample_intros){
   distinct_intros <- distinct(per_sample_intros, introduction_node, .keep_all = TRUE)
-  p <- ggplot(distinct_intros, aes(x = voc_for_plots, y = cluster_size, colour = voc_for_plots)) +
-    geom_point(alpha = 0.4, position = 'jitter')
-  print(p)
   return(distinct_intros)
-  
+}
+
+plot_size_distribution_by_VOC <- function(distinct_intros){
+  df_labels <- distinct_intros %>% group_by(voc_for_plots) %>% summarise(n = paste0("n = ",  n()))
+  # will need to change the 200 below to something larger for countries with larger cluster sizes.
+  p <- ggplot(distinct_intros, aes(x = voc_for_plots, y = cluster_size, colour = voc_for_plots)) +
+    geom_jitter(alpha = 0.4, width = 0.3) + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    stat_summary(fun = "median", colour = "black", shape = 95) +
+    geom_label(data = df_labels, aes(y = Inf, label = n), label.size = 0, fill = NA, vjust = 1) +
+    scale_y_log10(limits = c(1, max(distinct_intros$cluster_size) + 200))
+  print(p)
+  #print(q)
+  return(distinct_intros)
 }
 
 ```
 
+## stats on distinct intros
+
+```{r}
+basic_stats_on_distinct_intros <- function(distinct_intros){
+  group_by(distinct_intros, voc_for_plots) %>% summarise(number_clusters = n(), number_genomes = sum(cluster_size), mean_cluster_size = mean(cluster_size, na.rm = TRUE), sd_cluster_size = sd(cluster_size, na.rm = TRUE), median_cluster_size = median(cluster_size, na.rm = TRUE), IQR_cluster_size = IQR(cluster_size, na.rm = TRUE)) %>% kbl() %>% kable_styling()
+}
+```
+
+
 
 ## main function
 
-Not actually inside a function, because cant get the View working inside functions, but can wrap it when everything is working? Or figure out the View within function.
+If kruskal.test p-value is <0.05, then need to do pairwise wilcoxon rank sum tests.
 
 ```{r}
 
+national_cases <- read_in_national_case_numbers(national_cases_handle, countries_to_include)
 per_sample_intros <- read_in_per_sample_intros(malawi_per_sample_intro_handle, vocs_to_plot)
+restrictions <- read_in_restrictions(restrictions_handle, countries_to_include)
 #View(intros)
-distinct_intros <- plot_size_distribution_by_VOC(per_sample_intros)
-View(distinct_intros)
+distinct_intros <- distinct(per_sample_intros, introduction_node, .keep_all = TRUE)
+plot_size_distribution_by_VOC(distinct_intros)
+basic_stats_on_distinct_intros(distinct_intros)
+print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
+
 ```
 
+## main plots
+
+```{r fig.width=14, fig.height=10}
+
+beta_fnl <- get_first_and_last_week(per_sample_intros, "20H (Beta,V2)")
+beta_nc <- filter_and_plot_national_cases(national_cases, beta_fnl, "MWI")
+#beta_fi <- first_identification(genomes, "20H (Beta,V2)", beta_fnl)
+beta_restrictions <- filter_and_plot_restrictions(restrictions, beta_fnl, "MWI")
+#beta_restrictions
+
+beta_samples <- filter_and_plot_samples(per_sample_intros, "20H (Beta,V2)")
+#beta_samples
+
+beta_nc / beta_restrictions  / beta_samples  + plot_annotation(title = 'Beta', theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 2))
+
+```
