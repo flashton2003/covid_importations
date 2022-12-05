@@ -82,6 +82,19 @@ filter_and_plot_samples <- function(per_sample_intros, voc){
     xlab('Week') + 
     scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"))
   return(bw)
+}
+
+
+make_overall_plot <- function(per_sample_intros, voc, national_cases, restrictions, country_iso){
+  fnl <- get_first_and_last_week(per_sample_intros, voc)
+  nc <- filter_and_plot_national_cases(national_cases, fnl, country_iso)
+  #beta_fi <- first_identification(genomes, "20H (Beta,V2)", beta_fnl)
+  restrictions <- filter_and_plot_restrictions(restrictions, fnl, country_iso)
+  #beta_restrictions
   
+  samples <- filter_and_plot_samples(per_sample_intros, voc)
+  #beta_samples
   
+  p <- nc / restrictions  / samples  + plot_annotation(title = paste(country_iso, voc, sep = '-'), theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 2))
+  print(p)
 }

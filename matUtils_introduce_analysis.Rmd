@@ -104,17 +104,16 @@ print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
 
 ## main plots
 
+Todo:
+
+1. Do for each genotype, for each country (need to do the matUtils introduce as well)
+2. Name the nodes according the matUtils ranking
+
 ```{r fig.width=14, fig.height=10}
 
-beta_fnl <- get_first_and_last_week(per_sample_intros, "20H (Beta,V2)")
-beta_nc <- filter_and_plot_national_cases(national_cases, beta_fnl, "MWI")
-#beta_fi <- first_identification(genomes, "20H (Beta,V2)", beta_fnl)
-beta_restrictions <- filter_and_plot_restrictions(restrictions, beta_fnl, "MWI")
-#beta_restrictions
-
-beta_samples <- filter_and_plot_samples(per_sample_intros, "20H (Beta,V2)")
-#beta_samples
-
-beta_nc / beta_restrictions  / beta_samples  + plot_annotation(title = 'Beta', theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 2))
+#make_overall_plot(per_sample_intros, "20H (Beta,V2)", national_cases, restrictions, "MWI")
+#vocs_to_plot <- list("20H (Beta,V2)")
+#function(per_sample_intros, voc, national_cases, restrictions, country_iso)
+lapply(vocs_to_plot, make_overall_plot, per_sample_intros = per_sample_intros, national_cases = national_cases, restrictions = restrictions, country_iso = "MWI")
 
 ```
