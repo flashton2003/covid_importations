@@ -91,35 +91,34 @@ If kruskal.test p-value is <0.05, then need to do pairwise wilcoxon rank sum tes
 
 ```{r fig.width=14, fig.height=10}
 
-#national_cases <- read_in_national_case_numbers(national_cases_handle, countries_to_include)
-#per_sample_intros <- read_in_per_sample_intros(malawi_per_sample_intro_handle, vocs_to_plot)
-#restrictions <- read_in_restrictions(restrictions_handle, countries_to_include)
-#View(intros)
-#distinct_intros <- distinct(per_sample_intros, introduction_node, .keep_all = TRUE)
-#plot_size_distribution_by_VOC(distinct_intros)
-#basic_stats_on_distinct_intros(distinct_intros)
-#print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
-#make_overall_plot(per_sample_intros, "20H (Beta,V2)", national_cases, restrictions, "MWI")
-
-
-
-
 national_cases <- read_in_national_case_numbers(national_cases_handle, countries_to_include)
-View(national_cases)
+per_sample_intros <- read_in_per_sample_intros("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/kenyan_introductions.txt", vocs_to_plot)
 restrictions <- read_in_restrictions(restrictions_handle, countries_to_include)
+#View(intros)
+distinct_intros <- distinct(per_sample_intros, introduction_node, .keep_all = TRUE)
+plot_size_distribution_by_VOC(distinct_intros)
+basic_stats_on_distinct_intros(distinct_intros)
+print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
+make_overall_plot(per_sample_intros, "21K (Omicron)", national_cases, restrictions, "KEN")
 
-run_main <- function(per_sample_intro_handle, country_iso, national_cases, vocs_to_plot, restrictions){
+
+
+
+#national_cases <- read_in_national_case_numbers(national_cases_handle, countries_to_include)
+View(national_cases)
+#restrictions <- read_in_restrictions(restrictions_handle, countries_to_include)
+
+run_main <- function(per_sample_intro_handle, country_iso, n_cases, vocs_to_plot, restrictions){
   #print(per_sample_intro_handle)
   #print(country_iso)
   per_sample_intros <- read_in_per_sample_intros(per_sample_intro_handle, vocs_to_plot)
-  View(per_sample_intros)
   distinct_intros <- distinct(per_sample_intros, introduction_node, .keep_all = TRUE)
   plot_size_distribution_by_VOC(distinct_intros)
   basic_stats_on_distinct_intros(distinct_intros)
   print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
   #make_overall_plot(per_sample_intros, "20H (Beta,V2)", national_cases, restrictions, "MWI")
-  View(national_cases)
-  lapply(vocs_to_plot, make_overall_plot, per_sample_intros = per_sample_intros, national_cases = national_cases, restrictions = restrictions, country_iso = country_iso)
+  View(n_cases)
+  lapply(vocs_to_plot, make_overall_plot, per_sample_intros = per_sample_intros, national_cases = n_cases, restrictions = restrictions, country_iso = country_iso)
 }
 
 countries_to_plot <- c("MWI", "KEN")
@@ -129,8 +128,8 @@ per_sample_intro_handles <- c("/Users/flashton/Dropbox/COVID/AAP_introductions/r
 # apply converts data frame to matrix, so can't use it
 #mapply(run_main, per_sample_intro_handles, countries_to_plot, national_cases = national_cases, vocs_to_plot = vocs_to_plot, restrictions = restrictions)
 
-run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", "MWI", national_cases = national_cases, vocs_to_plot = vocs_to_plot, restrictions = restrictions)
-run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/kenyan_introductions.txt", "KEN", national_cases = national_cases, vocs_to_plot = vocs_to_plot, restrictions = restrictions)
+#run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", "MWI", n_cases = national_cases, vocs_to_plot = vocs_to_plot, restrictions = restrictions)
+#run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/kenyan_introductions.txt", "KEN", n_cases = national_cases, vocs_to_plot = vocs_to_plot, restrictions = restrictions)
 
 ```
 
@@ -140,11 +139,13 @@ Todo:
 
 1. Do for each genotype, for each country (need to do the matUtils introduce as well)
 2. Name the nodes according the matUtils ranking
+3. update the VOCs of interest to be relevant to each country
+4. the per sample intros has NAs for some of the dates
 
 ```{r fig.width=14, fig.height=10}
 
 #make_overall_plot(per_sample_intros, "20H (Beta,V2)", national_cases, restrictions, "MWI")
 #vocs_to_plot <- list("20H (Beta,V2)")
-lapply(vocs_to_plot, make_overall_plot, per_sample_intros = per_sample_intros, national_cases = national_cases, restrictions = restrictions, country_iso = "MWI")
+#lapply(vocs_to_plot, make_overall_plot, per_sample_intros = per_sample_intros, national_cases = national_cases, restrictions = restrictions, country_iso = "MWI")
 
 ```
