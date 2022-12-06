@@ -14,24 +14,28 @@ get_vocs_to_plot <- function(per_sample_intros, threshold_for_plotting){
   # count each intro node 
   # take the ones with more samples than threshold.
   # get the distinct annotations
+  #View(per_sample_intros)
+  View(threshold_for_plotting)
+  View(per_sample_intros %>% group_by(annotation_1, introduction_node) %>% summarise(n = n()) %>% filter(n >= threshold_for_plotting))
   vocs_to_plot <- per_sample_intros %>% group_by(annotation_1, introduction_node) %>% summarise(n = n()) %>% filter(n >= threshold_for_plotting) %>% distinct(annotation_1)
-  vocs_to_plot <- vocs_to_plot$annotation_1
+  vocs_to_plot <- as.list(vocs_to_plot$annotation_1)
   return(vocs_to_plot)
-  
 }
+
 
 read_in_per_sample_intros <- function(per_sample_intro_handle, threshold_for_plotting){
   per_sample_intros <- read_delim(per_sample_intro_handle, delim = "\t", escape_double = FALSE, trim_ws = TRUE)
-  vocs_to_plot <- get_vocs_to_plot(per_sample_intros, threshold_for_plotting)
   
+  vocs_to_plot <- get_vocs_to_plot(per_sample_intros, threshold_for_plotting)
+  View(vocs_to_plot)
   per_sample_intros <- per_sample_intros %>%  mutate(voc_for_plots = ifelse(annotation_1 %in% vocs_to_plot, annotation_1, 'not_voc_of_interest'))
   per_sample_intros <- give_sensible_names_to_intros(per_sample_intros)
   
-  per_sample_intros <- per_sample_intros %>% group_by(new_intro_name) %>%  mutate(introduction_node_for_plotting = ifelse(n() >= 5, new_intro_name, 'less_than_5')) %>% ungroup()
+  per_sample_intros <- per_sample_intros %>% group_by(new_intro_name) %>%  mutate(introduction_node_for_plotting = ifelse(n() >= threshold_for_plotting, new_intro_name, paste('less_than_', threshold_for_plotting))) %>% ungroup()
   #Split <- sapply(str_split(per_sample_intros$sample, "|"), tail, 1)
   # get the sampling date from the sample name
   #per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::ymd(str_split_i(sample, "\\|", -1)))
-  per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::parse_date_time(str_split_i(sample, "\\|", -1), c('ymd', 'ym')))
+  per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::parse_date_time(str_split_i(sample, "\\|", -1), c('ymd', 'ym', 'y')))
   per_sample_intros$week <- as.Date(cut(per_sample_intros$sampling_date, breaks = "week"))
   #View(per_sample_intros)
   output <- list(per_sample_intros = per_sample_intros, vocs_to_plot = vocs_to_plot)
