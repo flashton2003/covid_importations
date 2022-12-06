@@ -15,8 +15,8 @@ get_vocs_to_plot <- function(per_sample_intros, threshold_for_plotting){
   # take the ones with more samples than threshold.
   # get the distinct annotations
   #View(per_sample_intros)
-  View(threshold_for_plotting)
-  View(per_sample_intros %>% group_by(annotation_1, introduction_node) %>% summarise(n = n()) %>% filter(n >= threshold_for_plotting))
+  #View(threshold_for_plotting)
+  #View(per_sample_intros %>% group_by(annotation_1, introduction_node) %>% summarise(n = n()) %>% filter(n >= threshold_for_plotting))
   vocs_to_plot <- per_sample_intros %>% group_by(annotation_1, introduction_node) %>% summarise(n = n()) %>% filter(n >= threshold_for_plotting) %>% distinct(annotation_1)
   vocs_to_plot <- as.list(vocs_to_plot$annotation_1)
   return(vocs_to_plot)
@@ -27,7 +27,7 @@ read_in_per_sample_intros <- function(per_sample_intro_handle, threshold_for_plo
   per_sample_intros <- read_delim(per_sample_intro_handle, delim = "\t", escape_double = FALSE, trim_ws = TRUE)
   
   vocs_to_plot <- get_vocs_to_plot(per_sample_intros, threshold_for_plotting)
-  View(vocs_to_plot)
+  #View(vocs_to_plot)
   per_sample_intros <- per_sample_intros %>%  mutate(voc_for_plots = ifelse(annotation_1 %in% vocs_to_plot, annotation_1, 'not_voc_of_interest'))
   per_sample_intros <- give_sensible_names_to_intros(per_sample_intros)
   
@@ -37,6 +37,8 @@ read_in_per_sample_intros <- function(per_sample_intro_handle, threshold_for_plo
   #per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::ymd(str_split_i(sample, "\\|", -1)))
   per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::parse_date_time(str_split_i(sample, "\\|", -1), c('ymd', 'ym', 'y')))
   per_sample_intros$week <- as.Date(cut(per_sample_intros$sampling_date, breaks = "week"))
+  per_sample_intros$month <- as.Date(cut(per_sample_intros$sampling_date, breaks = "month"))
+  
   #View(per_sample_intros)
   output <- list(per_sample_intros = per_sample_intros, vocs_to_plot = vocs_to_plot)
   return(output)
@@ -115,7 +117,19 @@ filter_and_plot_samples <- function(per_sample_intros, voc){
 }
 
 
-make_overall_plot <- function(per_sample_intros, voc, national_cases, restrictions, country_iso){
+filter_and_plot_all_samples <- function(per_sample_intros){
+  #View(per_sample_intros)
+  bw <- ggplot(per_sample_intros, aes(x = month, y = 1, fill = voc_for_plots)) + 
+    geom_bar(stat = "identity") + 
+    theme(text=element_text(size=20)) +
+    #theme(axis.title.y = element_text(angle = 0, vjust = 0.5), text=element_text(size=20))
+    ylab('Frequency') + 
+    xlab('Week') + 
+    scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"))
+  return(bw)
+}
+
+make_per_VOC_plots <- function(per_sample_intros, voc, national_cases, restrictions, country_iso){
   fnl <- get_first_and_last_week(per_sample_intros, voc)
   #View(fnl)
   nc <- filter_and_plot_national_cases(national_cases, fnl, country_iso)
@@ -128,3 +142,16 @@ make_overall_plot <- function(per_sample_intros, voc, national_cases, restrictio
   print(p)
 }
 
+
+make_overall_plots <- function(per_sample_intros, national_cases, restrictions, country_iso){
+  first <- min(per_sample_intros$week)
+  last <- max(per_sample_intros$week)
+  fnl <- c(first, last)
+  nc <- filter_and_plot_national_cases(national_cases, fnl, country_iso) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  #beta_fi <- first_identification(genomes, "20H (Beta,V2)", beta_fnl)
+  restrictions <- filter_and_plot_restrictions(restrictions, fnl, country_iso) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  samples <- filter_and_plot_all_samples(per_sample_intros) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  #beta_samples
+  p <- nc / restrictions  / samples  + plot_annotation(title = paste(country_iso, sep = '-'), theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 2))
+  print(p)
+}

@@ -98,26 +98,28 @@ national_cases <- read_in_national_case_numbers(national_cases_handle, countries
 restrictions <- read_in_restrictions(restrictions_handle, countries_to_include)
 
 run_main <- function(per_sample_intro_handle, country_iso, n_cases, restrictions, threshold_for_plotting){
-  print(per_sample_intro_handle)
-  print(country_iso)
+  #print(per_sample_intro_handle)
+  #print(country_iso)
   per_sample_output <- read_in_per_sample_intros(per_sample_intro_handle, threshold_for_plotting)
   per_sample_intros <- per_sample_output$per_sample_intros
   vocs_to_plot <- per_sample_output$vocs_to_plot
-  View(per_sample_output)
+  #View(per_sample_output)
   distinct_intros <- distinct(per_sample_intros, introduction_node, .keep_all = TRUE)
   plot_size_distribution_by_VOC(distinct_intros)
   basic_stats_on_distinct_intros(distinct_intros)
   print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
   #View(n_cases)
-  lapply(vocs_to_plot, make_overall_plot, per_sample_intros = per_sample_intros, national_cases = n_cases, restrictions = restrictions, country_iso = country_iso)
+  make_overall_plots(per_sample_intros, n_cases, restrictions, country_iso)
+
+  lapply(vocs_to_plot, make_per_VOC_plots, per_sample_intros = per_sample_intros, national_cases = n_cases, restrictions = restrictions, country_iso = country_iso)
 }
 
 #countries_to_plot <- c("MWI", "KEN")
 #per_sample_intro_handles <- c("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", "/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/kenyan_introductions.txt")
 
 
-run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", country_iso = "MWI", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
-#run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/kenyan_introductions.txt", "KEN", n_cases = national_cases, restrictions = restrictions)
+#run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", country_iso = "MWI", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
+run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/kenyan_introductions.txt", "KEN", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
 
 ```
 
@@ -127,6 +129,7 @@ If you want to run it, then change eval to TRUE in the chunk options section.
 
 ```{r troublshooting, fig.width=14, fig.height=10, eval=FALSE}
 national_cases <- read_in_national_case_numbers(national_cases_handle, countries_to_include)
+
 per_sample_output <- read_in_per_sample_intros("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", threshold_for_plotting)
 per_sample_intros <- per_sample_output$per_sample_intros
 vocs_to_plot <- per_sample_output$vocs_to_plot
@@ -137,7 +140,8 @@ plot_size_distribution_by_VOC(distinct_intros)
 basic_stats_on_distinct_intros(distinct_intros)
 print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
 vocs_to_plot
-make_overall_plot(per_sample_intros, vocs_to_plot[[4]], national_cases, restrictions, "MWI")
+make_per_VOC_plots(per_sample_intros, vocs_to_plot[[4]], national_cases, restrictions, "MWI")
+make_overall_plots(per_sample_intros, national_cases, restrictions, "MWI")
 ```
 
 
@@ -145,8 +149,7 @@ make_overall_plot(per_sample_intros, vocs_to_plot[[4]], national_cases, restrict
 
 Todo:
 
-2. update the VOCs of interest to be relevant to each country
-3. Plot the overall data for each country - monthly genomes (lineage), monthly national cases, daily restriction level.
+3. Plot the overall data for each country - monthly genomes (lineage), monthly national cases, daily restriction level, cumulative introductions.
 4. do a cumulative frequency plot for the introductions
 5. if kw test p-val < 0.05, do pairwise wilcoxon rank
-6. use the plotting theshold in the other places as well
+7. 
