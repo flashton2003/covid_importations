@@ -31,7 +31,7 @@ read_in_per_sample_intros <- function(per_sample_intro_handle, threshold_for_plo
   per_sample_intros <- per_sample_intros %>%  mutate(voc_for_plots = ifelse(annotation_1 %in% vocs_to_plot, annotation_1, 'not_voc_of_interest'))
   per_sample_intros <- give_sensible_names_to_intros(per_sample_intros)
   
-  per_sample_intros <- per_sample_intros %>% group_by(new_intro_name) %>%  mutate(introduction_node_for_plotting = ifelse(n() >= threshold_for_plotting, new_intro_name, paste('less_than_', threshold_for_plotting))) %>% ungroup()
+  per_sample_intros <- per_sample_intros %>% group_by(new_intro_name) %>%  mutate(introduction_node_for_plotting = ifelse(n() >= threshold_for_plotting, new_intro_name, paste('fewer_than_', threshold_for_plotting, sep = ''))) %>% ungroup()
   #Split <- sapply(str_split(per_sample_intros$sample, "|"), tail, 1)
   # get the sampling date from the sample name
   #per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::ymd(str_split_i(sample, "\\|", -1)))
@@ -47,7 +47,8 @@ read_in_per_sample_intros <- function(per_sample_intro_handle, threshold_for_plo
 
 read_in_national_case_numbers <- function(national_cases_handle, countries_to_include){
   national_data <- read_csv("~/Dropbox/COVID/our_world_in_data/2022.12.05/owid-covid-data.csv")
-  national_data <- national_data %>% filter(iso_code %in% countries_to_include)
+  national_data <- national_data %>% filter(iso_code %in% countries_to_include) %>% filter(!is.na(new_cases))
+  
   #national_cases$date <- as.Date(national_cases$date, format = '%d/%m/%Y')
   
   national_data$Month <- as.Date(cut(national_data$date, breaks = "month"))
@@ -84,7 +85,7 @@ filter_and_plot_national_cases <- function(all_national_cases, date_range, count
     geom_bar(stat = "identity") + 
     ylab("National\ncases") + 
     theme(text=element_text(size=20), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-    scale_x_date(breaks=date_breaks("1 month"),labels=date_format("%b %y")) +
+    scale_x_date(breaks=date_breaks("1 month"),labels=date_format("%b %y"), limits = date_range) +
     scale_y_continuous(labels = label_comma())
   #theme(axis.title.y = element_text(angle = 0, vjust = 0.5), text=element_text(size=20))
   
@@ -99,12 +100,36 @@ filter_and_plot_restrictions <- function(restriction_df, date_range, country_iso
     ylab('Restriction\nlevel') + 
     theme(text=element_text(size=20), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     #theme(axis.title.y = element_text(angle = 0, vjust = 0.5), text=element_text(size=20))
-    scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"))
+    scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"), limits = date_range)
   return(restrictions_plot)
 }
 
 
-filter_and_plot_samples <- function(per_sample_intros, voc){
+first_identification <- function(per_sample_intros, voc_to_analyse, date_range, filter_voc){
+  if (filter_voc == FALSE){
+    filtered_samples <- per_sample_intros %>% filter(annotation_1 == voc_to_analyse)
+  } else {
+    filtered_samples <- per_sample_intros
+  }
+  
+  filtered_samples <- filtered_samples %>% arrange(sampling_date)
+  first <- filtered_samples %>% distinct(introduction_node, .keep_all = TRUE)
+  #print(date_range[1])
+  #print(date_range[2])
+  first$sampling_date <- as.Date(first$sampling_date)
+  fi <- ggplot(first, aes(x = sampling_date)) +
+    stat_ecdf() +
+    theme(text=element_text(size=20), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+    ylab('Cumulative Introduction\nFrequency') + 
+    xlab('Date') +
+    scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"), limits = date_range)
+    
+  
+  return(fi)
+}
+
+
+filter_and_plot_samples <- function(per_sample_intros, voc, date_range){
   filtered_samples <- per_sample_intros %>% filter(voc_for_plots == voc)
   bw <- ggplot(filtered_samples, aes(x = week, y = 1, fill = introduction_node_for_plotting)) + 
     geom_bar(stat = "identity") + 
@@ -112,33 +137,34 @@ filter_and_plot_samples <- function(per_sample_intros, voc){
     #theme(axis.title.y = element_text(angle = 0, vjust = 0.5), text=element_text(size=20))
     ylab('Frequency') + 
     xlab('Week') + 
-    scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"))
+    scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"), limits = date_range)
   return(bw)
 }
 
 
-filter_and_plot_all_samples <- function(per_sample_intros){
+filter_and_plot_all_samples <- function(per_sample_intros, date_range){
   #View(per_sample_intros)
   bw <- ggplot(per_sample_intros, aes(x = month, y = 1, fill = voc_for_plots)) + 
     geom_bar(stat = "identity") + 
     theme(text=element_text(size=20), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     #theme(axis.title.y = element_text(angle = 0, vjust = 0.5), text=element_text(size=20))
     ylab('Frequency') + 
-    xlab('Week') + 
-    scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"))
+    xlab('Month') + 
+    scale_x_date(breaks=date_breaks("1 month"), labels=date_format("%b %y"), limits = date_range)
   return(bw)
 }
+
 
 make_per_VOC_plots <- function(per_sample_intros, voc, national_cases, restrictions, country_iso){
   fnl <- get_first_and_last_week(per_sample_intros, voc)
   #View(fnl)
   nc <- filter_and_plot_national_cases(national_cases, fnl, country_iso)
-  #beta_fi <- first_identification(genomes, "20H (Beta,V2)", beta_fnl)
+  fi <- first_identification(per_sample_intros, voc, fnl, FALSE)
   restrictions <- filter_and_plot_restrictions(restrictions, fnl, country_iso)
   #beta_restrictions
-  samples <- filter_and_plot_samples(per_sample_intros, voc)
+  samples <- filter_and_plot_samples(per_sample_intros, voc, fnl)
   #beta_samples
-  p <- nc / restrictions  / samples  + plot_annotation(title = paste(country_iso, voc, sep = '-'), theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 2))
+  p <- nc / restrictions / fi / samples  + plot_annotation(title = paste(country_iso, voc, sep = '-'), theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 1, 2))
   print(p)
 }
 
@@ -147,11 +173,10 @@ make_overall_plots <- function(per_sample_intros, national_cases, restrictions, 
   first <- min(per_sample_intros$week)
   last <- max(per_sample_intros$week)
   fnl <- c(first, last)
-  nc <- filter_and_plot_national_cases(national_cases, fnl, country_iso) 
-  #beta_fi <- first_identification(genomes, "20H (Beta,V2)", beta_fnl)
+  nc <- filter_and_plot_national_cases(national_cases, fnl, country_iso)
+  fi <- first_identification(per_sample_intros, NA, fnl, TRUE)
   restrictions <- filter_and_plot_restrictions(restrictions, fnl, country_iso)# + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-  samples <- filter_and_plot_all_samples(per_sample_intros)# + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-  #beta_samples
-  p <- nc / restrictions  / samples  + plot_annotation(title = paste(country_iso, sep = '-'), theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 2))
+  samples <- filter_and_plot_all_samples(per_sample_intros, fnl)
+  p <- nc / restrictions / fi  / samples  + plot_annotation(title = paste(country_iso, sep = '-'), theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 1, 2))
   print(p)
 }
