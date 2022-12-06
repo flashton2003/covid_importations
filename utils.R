@@ -1,19 +1,41 @@
-
 library(scales)
 library(readr)
 
-read_in_per_sample_intros <- function(per_sample_intro_handle, vocs_to_plot){
-  per_sample_intros <- read_delim(per_sample_intro_handle, delim = "\t", escape_double = FALSE, trim_ws = TRUE)
-  per_sample_intros <- per_sample_intros %>%  mutate(voc_for_plots = ifelse(annotation_1 %in% vocs_to_plot, annotation_1, 'not_voc_of_interest'))
-  per_sample_intros <- per_sample_intros %>% group_by(introduction_node) %>%  mutate(introduction_node_for_plotting = ifelse(n() >= 5, introduction_node, 'less_than_5')) %>% ungroup()
+give_sensible_names_to_intros <- function(per_sample_intros){
+  sizes <- per_sample_intros %>% distinct(introduction_node, .keep_all = TRUE) %>% arrange(desc(cluster_size), introduction_node) %>% mutate(new_intro_name = paste('pg', row_number(), sep = '_')) %>% select(introduction_node, new_intro_name)
+  #View(sizes)
+  per_sample_intros <- left_join(per_sample_intros, sizes, by = 'introduction_node')
+  return(per_sample_intros)
+}
+
+
+get_vocs_to_plot <- function(per_sample_intros, threshold_for_plotting){
+  # group by the anotation and the intro node (could just group by the intro node, but convenient to take the annotation along as well)
+  # count each intro node 
+  # take the ones with more samples than threshold.
+  # get the distinct annotations
+  vocs_to_plot <- per_sample_intros %>% group_by(annotation_1, introduction_node) %>% summarise(n = n()) %>% filter(n >= threshold_for_plotting) %>% distinct(annotation_1)
+  vocs_to_plot <- vocs_to_plot$annotation_1
+  return(vocs_to_plot)
   
+}
+
+read_in_per_sample_intros <- function(per_sample_intro_handle, threshold_for_plotting){
+  per_sample_intros <- read_delim(per_sample_intro_handle, delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+  vocs_to_plot <- get_vocs_to_plot(per_sample_intros, threshold_for_plotting)
+  
+  per_sample_intros <- per_sample_intros %>%  mutate(voc_for_plots = ifelse(annotation_1 %in% vocs_to_plot, annotation_1, 'not_voc_of_interest'))
+  per_sample_intros <- give_sensible_names_to_intros(per_sample_intros)
+  
+  per_sample_intros <- per_sample_intros %>% group_by(new_intro_name) %>%  mutate(introduction_node_for_plotting = ifelse(n() >= 5, new_intro_name, 'less_than_5')) %>% ungroup()
   #Split <- sapply(str_split(per_sample_intros$sample, "|"), tail, 1)
   # get the sampling date from the sample name
-  per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::ymd(str_split_i(sample, "\\|", -1)))
+  #per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::ymd(str_split_i(sample, "\\|", -1)))
+  per_sample_intros <- per_sample_intros %>% mutate(sampling_date = lubridate::parse_date_time(str_split_i(sample, "\\|", -1), c('ymd', 'ym')))
   per_sample_intros$week <- as.Date(cut(per_sample_intros$sampling_date, breaks = "week"))
-  
-  
-  return(per_sample_intros)
+  #View(per_sample_intros)
+  output <- list(per_sample_intros = per_sample_intros, vocs_to_plot = vocs_to_plot)
+  return(output)
 }
 
 
@@ -37,7 +59,7 @@ read_in_restrictions <- function(restrictions_handle, countries_to_include){
 
 get_first_and_last_week <- function(per_sample_intros, voc_to_analyse){
   per_sample_intros_this_voc <- per_sample_intros[per_sample_intros$voc_for_plots == voc_to_analyse,]
-  View(per_sample_intros_this_voc)
+  #View(per_sample_intros_this_voc)
   first <- min(per_sample_intros_this_voc$week)
   last <- max(per_sample_intros_this_voc$week)
   first_and_last <- c(first, last)
@@ -91,15 +113,14 @@ filter_and_plot_samples <- function(per_sample_intros, voc){
 
 make_overall_plot <- function(per_sample_intros, voc, national_cases, restrictions, country_iso){
   fnl <- get_first_and_last_week(per_sample_intros, voc)
-  View(fnl)
+  #View(fnl)
   nc <- filter_and_plot_national_cases(national_cases, fnl, country_iso)
   #beta_fi <- first_identification(genomes, "20H (Beta,V2)", beta_fnl)
   restrictions <- filter_and_plot_restrictions(restrictions, fnl, country_iso)
   #beta_restrictions
-  
   samples <- filter_and_plot_samples(per_sample_intros, voc)
   #beta_samples
-  
   p <- nc / restrictions  / samples  + plot_annotation(title = paste(country_iso, voc, sep = '-'), theme = theme(plot.title = element_text(size = 24, face = 'bold'))) + plot_layout(heights = c(1, 1, 2))
   print(p)
 }
+
