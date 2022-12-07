@@ -9,6 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
+## renv
+
+This project uses renv to manage CRAN packages. See here for how to get this working on your machine.
+
+https://rstudio.github.io/renv/articles/collaborating.html
+
 
 ## Imports
 
