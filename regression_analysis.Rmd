@@ -86,6 +86,23 @@ cases_ipd_restrictions$international_travel_controls <- as.factor(cases_ipd_rest
 cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(!is.na(international_travel_controls))
 mwi_cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(iso_code == "MWI")
 
-lme(number_introductions ~ date + international_travel_controls , data = mwi_cases_ipd_restrictions, correlation = corAR1(form = ~ date))
+# lme(number_introductions ~ date + international_travel_controls, random = ~ date, correlation = corAR1(form = ~ date), data = mwi_cases_ipd_restrictions)
+m1 <- lme(number_introductions ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions)
+summary(m1)
 
+mwi_cases_ipd_restrictions_beta <- mwi_cases_ipd_restrictions %>% filter(date > "2020-12-01" & date < "2021-04-01") 
+
+m1_beta <- lme(number_introductions ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions_beta)
+summary(m1_beta)
+
+mwi_cases_ipd_restrictions_delta <- mwi_cases_ipd_restrictions %>% filter(date > "2021-04-01" & date < "2021-10-01") 
+
+m1_delta <- lme(number_introductions ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions_delta)
+summary(m1_delta)
+
+
+m2 <- lme(number_introductions ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = cases_ipd_restrictions)
+summary(m2)
+
+lme(number_introductions ~ date + international_travel_controls, correlation = corAR1(form = ~ date), data = mwi_cases_ipd_restrictions)
 ```
