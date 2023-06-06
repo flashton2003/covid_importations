@@ -11,18 +11,22 @@ library(lubridate)
 library(dplyr)
 library(stringr)
 library(nlme)
-
-source("/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/utils.R")
 ```
 
+# Sources
+```{r}
+source("/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/utils.R")
+
+```
+# calc the intros per day
+
+Did this again, as the other way was quite VOC orientated (only considered cases of specific VOCs), this will count any introduction of any voc.
 
 ```{r}
 
 countries_to_include <- c("MWI", "KEN", "ZAF", "VNM", "THA", "IDN", "KHM")
 national_cases_handle <- "/Users/flashton/Dropbox/COVID/our_world_in_data/2022.12.05/owid-covid-data.csv"
 restrictions_handle <- "/Users/flashton/Dropbox/COVID/our_world_in_data/2022.12.05/international-travel-covid.csv"
-
-
 
 national_cases <- read_in_national_case_numbers(national_cases_handle, countries_to_include)
 #View(national_cases)
@@ -44,8 +48,6 @@ get_intros_per_day <- function(per_sample_intro_handle, country_iso){
   #write_csv(intros_per_day, "/Users/flashton/Dropbox/COVID/AAP_introductions/results/2023.06.06/malawi.intros_per_day.csv")
 }
 
-
-
 malawi_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", country_iso = "MWI")
 cambodia_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/cambodian_introductions.txt", country_iso = "KHM")
 indonesia_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/indonesian_introductions.txt", country_iso = "IDN")
@@ -56,7 +58,7 @@ thailand_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introducti
 vietnam_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/vietnamese_introductions.txt", country_iso = "VNM")
 ```
 
-
+# Combine the introductions per day with the restirction and case number data
 ```{r}
 # rbind malawi and cambodia
 all_ipd <- rbind(malawi_ipd, cambodia_ipd, indonesia_ipd, kenya_ipd, south_africa_ipd, thailand_ipd, vietnam_ipd)
@@ -85,6 +87,5 @@ cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(!is.na(international
 mwi_cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(iso_code == "MWI")
 
 lme(number_introductions ~ date + international_travel_controls , data = mwi_cases_ipd_restrictions, correlation = corAR1(form = ~ date))
-
 
 ```
