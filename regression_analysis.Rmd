@@ -1,0 +1,90 @@
+
+# The purpose of this script is to
+# 1. make a nice dataframe that looks like this
+# date, number of introductions, restriction level, country
+# do a regression analysis, including autocorrelation
+
+# import the packages required for this script
+```{r}
+library(readr)
+library(lubridate)
+library(dplyr)
+library(stringr)
+library(nlme)
+
+source("/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/utils.R")
+```
+
+
+```{r}
+
+countries_to_include <- c("MWI", "KEN", "ZAF", "VNM", "THA", "IDN", "KHM")
+national_cases_handle <- "/Users/flashton/Dropbox/COVID/our_world_in_data/2022.12.05/owid-covid-data.csv"
+restrictions_handle <- "/Users/flashton/Dropbox/COVID/our_world_in_data/2022.12.05/international-travel-covid.csv"
+
+
+
+national_cases <- read_in_national_case_numbers(national_cases_handle, countries_to_include)
+#View(national_cases)
+restrictions <- read_in_restrictions(restrictions_handle, countries_to_include)
+restrictions <- restrictions %>% rename(iso_code = Code, date = Day)
+
+get_intros_per_day <- function(per_sample_intro_handle, country_iso){
+  per_sample_intros <- read_delim(per_sample_intro_handle, delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+  per_sample_intros <- per_sample_intros %>% mutate(date = lubridate::parse_date_time(str_split_i(sample, "\\|", -1), c('ymd', 'ym', 'y')))
+
+  # View(per_sample_intros)
+  first_introduction <- per_sample_intros %>% arrange(date) %>% distinct(introduction_node, .keep_all = TRUE)
+  #print(date_range[1])
+  #print(date_range[2])
+  first_introduction$date <- as.Date(first_introduction$date)
+  intros_per_day <- first_introduction %>% group_by(date) %>% summarise(number_introductions = n()) %>% mutate(country = country_iso)
+  
+  return(intros_per_day)
+  #write_csv(intros_per_day, "/Users/flashton/Dropbox/COVID/AAP_introductions/results/2023.06.06/malawi.intros_per_day.csv")
+}
+
+
+
+malawi_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", country_iso = "MWI")
+cambodia_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/cambodian_introductions.txt", country_iso = "KHM")
+indonesia_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/indonesian_introductions.txt", country_iso = "IDN")
+kenya_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/kenyan_introductions.txt", country_iso = "KEN")
+# laos_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/laotian_introductions.txt", country_iso = "LAO")
+south_africa_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/southafrican_introductions.txt", country_iso = "ZAF")
+thailand_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/thai_introductions.txt", country_iso = "THA")
+vietnam_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/vietnamese_introductions.txt", country_iso = "VNM")
+```
+
+
+```{r}
+# rbind malawi and cambodia
+all_ipd <- rbind(malawi_ipd, cambodia_ipd, indonesia_ipd, kenya_ipd, south_africa_ipd, thailand_ipd, vietnam_ipd)
+all_ipd <- all_ipd %>% rename(iso_code = country)
+# View(all_ipd)
+
+# malawi_ipd <- malawi_ipd %>% mutate(date = sampling_date)
+cases_and_ipd <- national_cases %>% left_join(all_ipd, by = c("iso_code", "date")) %>% mutate(number_introductions = ifelse(is.na(number_introductions), 0, number_introductions))
+cases_ipd_restrictions <- cases_and_ipd %>% left_join(restrictions, by = c("iso_code", "date")) %>% select(iso_code, continent, location, date, new_cases, number_introductions, international_travel_controls)
+
+write_csv(cases_ipd_restrictions, "/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/cases_ipd_restrictions.csv")
+
+
+```
+
+
+# use lme to model the number of introductions per day, with autocorrelation, including date and international travel controls as covars
+
+
+```{r}
+
+cases_ipd_restrictions <- read_csv("/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/cases_ipd_restrictions.csv")
+
+cases_ipd_restrictions$international_travel_controls <- as.factor(cases_ipd_restrictions$international_travel_controls)
+cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(!is.na(international_travel_controls))
+mwi_cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(iso_code == "MWI")
+
+lme(number_introductions ~ date + international_travel_controls , data = mwi_cases_ipd_restrictions, correlation = corAR1(form = ~ date))
+
+
+```

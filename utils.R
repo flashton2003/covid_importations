@@ -1,5 +1,6 @@
 library(scales)
 library(readr)
+library(stringr)
 
 give_sensible_names_to_intros <- function(per_sample_intros){
   sizes <- per_sample_intros %>% distinct(introduction_node, .keep_all = TRUE) %>% arrange(desc(cluster_size), introduction_node) %>% mutate(new_intro_name = paste('pg', row_number(), sep = '_')) %>% select(introduction_node, new_intro_name)

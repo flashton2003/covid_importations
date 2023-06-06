@@ -124,8 +124,8 @@ countries_to_include <- c("MWI", "KEN", "ZAF", "VNM", "THA", "IDN", "KHM", "LAO"
 #run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/indonesian_introductions.txt", "IDN", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
 #run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/kenyan_introductions.txt", "KEN", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
 #run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/laos_introductions.txt", "LAO", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
-#run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", country_iso = "MWI", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
-run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/southafrican_introductions.txt", "ZAF", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
+run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.excl_mwi_dups.txt", country_iso = "MWI", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
+#run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/southafrican_introductions.txt", "ZAF", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
 #run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/thai_introductions.txt", "THA", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
 #run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/vietnamese_introductions.txt", "VNM", n_cases = national_cases, restrictions = restrictions, threshold_for_plotting = threshold_for_plotting)
 
@@ -137,16 +137,18 @@ run_main("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/sou
 
 If you want to run it, then change eval to TRUE in the chunk options section.
 
-```{r troublshooting, fig.width=14, fig.height=10, eval=FALSE}
+```{r troublshooting, fig.width=5, fig.height=5, eval=FALSE}
+#fig.width=14, fig.height=10
 national_cases <- read_in_national_case_numbers(national_cases_handle, countries_to_include)
 
-per_sample_output <- read_in_per_sample_intros("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/laos_introductions.txt", threshold_for_plotting)
+per_sample_output <- read_in_per_sample_intros("/Users/flashton/Dropbox/COVID/AAP_introductions/results/2022.12.02/malawian_introductions.txt", threshold_for_plotting)
 per_sample_intros <- per_sample_output$per_sample_intros
 vocs_to_plot <- per_sample_output$vocs_to_plot
 restrictions <- read_in_restrictions(restrictions_handle, countries_to_include)
 #View(intros)
+country_iso <- 'MWI'
 distinct_intros <- distinct(per_sample_intros, introduction_node, .keep_all = TRUE)
-plot_size_distribution_by_VOC(distinct_intros)
+plot_size_distribution_by_VOC(distinct_intros, country_iso)
 basic_stats_on_distinct_intros(distinct_intros)
 print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
 
@@ -158,7 +160,7 @@ print(kruskal.test(cluster_size ~ voc_for_plots, data = distinct_intros))
 
 #vocs_to_plot
 make_overall_plots(per_sample_intros, national_cases, restrictions, "LAO")
-make_per_VOC_plots(per_sample_intros, vocs_to_plot[[4]], national_cases, restrictions, "MWI")
+make_per_VOC_plots(per_sample_intros, vocs_to_plot[[2]], national_cases, restrictions, "MWI")
 
 ```
 
@@ -171,3 +173,4 @@ Todo:
 8. filter out the ones with no sampling date before applying the thresholds?
 9. sort out problem with laos (NAs somewhere)
 10. set dynamic threshold for the "all" plot - only variants with some %age of the total samples should be plotted.
+
