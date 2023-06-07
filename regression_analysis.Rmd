@@ -1,4 +1,11 @@
 
+---
+title: "regression_analysis"
+author: "Philip Ashton"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
 # The purpose of this script is to
 # 1. make a nice dataframe that looks like this
 # date, number of introductions, restriction level, country
@@ -14,7 +21,7 @@ library(nlme)
 ```
 
 # Sources
-```{r}
+```{r sources}
 source("/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/utils.R")
 
 ```
@@ -22,7 +29,7 @@ source("/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/utils.R")
 
 Did this again, as the other way was quite VOC orientated (only considered cases of specific VOCs), this will count any introduction of any voc.
 
-```{r}
+```{r basics}
 
 countries_to_include <- c("MWI", "KEN", "ZAF", "VNM", "THA", "IDN", "KHM")
 national_cases_handle <- "/Users/flashton/Dropbox/COVID/our_world_in_data/2022.12.05/owid-covid-data.csv"
@@ -59,7 +66,7 @@ vietnam_ipd <- get_intros_per_day("/Users/flashton/Dropbox/COVID/AAP_introductio
 ```
 
 # Combine the introductions per day with the restirction and case number data
-```{r}
+```{r combine_ipd_restrictions_case_numbers}
 # rbind malawi and cambodia
 all_ipd <- rbind(malawi_ipd, cambodia_ipd, indonesia_ipd, kenya_ipd, south_africa_ipd, thailand_ipd, vietnam_ipd)
 all_ipd <- all_ipd %>% rename(iso_code = country)
@@ -68,7 +75,7 @@ all_ipd <- all_ipd %>% rename(iso_code = country)
 # malawi_ipd <- malawi_ipd %>% mutate(date = sampling_date)
 cases_and_ipd <- national_cases %>% left_join(all_ipd, by = c("iso_code", "date")) %>% mutate(number_introductions = ifelse(is.na(number_introductions), 0, number_introductions))
 cases_ipd_restrictions <- cases_and_ipd %>% left_join(restrictions, by = c("iso_code", "date")) %>% select(iso_code, continent, location, date, new_cases, number_introductions, international_travel_controls)
-
+cases_ipd_restrictions <- cases_ipd_restrictions %>% mutate(number_introductions_lead14 = lead(number_introductions, n = 14)) %>% mutate(number_introductions_lead7 = lead(number_introductions, n = 7))
 write_csv(cases_ipd_restrictions, "/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/cases_ipd_restrictions.csv")
 
 
@@ -77,32 +84,89 @@ write_csv(cases_ipd_restrictions, "/Users/flashton/Dropbox/COVID/AAP_introductio
 
 # use lme to model the number of introductions per day, with autocorrelation, including date and international travel controls as covars
 
+setup
 
-```{r}
-
+```{r setup}
 cases_ipd_restrictions <- read_csv("/Users/flashton/Dropbox/COVID/AAP_introductions/scripts/cases_ipd_restrictions.csv")
-
 cases_ipd_restrictions$international_travel_controls <- as.factor(cases_ipd_restrictions$international_travel_controls)
 cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(!is.na(international_travel_controls))
-mwi_cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(iso_code == "MWI")
 
+```
+
+
+## Malawi - whole pandemic
+
+```{r malawi_whole_pandemic}
+
+levels(cases_ipd_restrictions$international_travel_controls)
+
+mwi_cases_ipd_restrictions <- cases_ipd_restrictions %>% filter(iso_code == "MWI")
 # lme(number_introductions ~ date + international_travel_controls, random = ~ date, correlation = corAR1(form = ~ date), data = mwi_cases_ipd_restrictions)
 m1 <- lme(number_introductions ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions)
 summary(m1)
+```
+```{r malawi_whole_pandemic_lead14}
+m1_lead14 <- lme(number_introductions_lead14 ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions)
+summary(m1_lead14)
+```
 
+```{r malawi_whole_pandemic_lead7}
+m1_lead7 <- lme(number_introductions_lead7 ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions)
+summary(m1_lead7)
+```
+
+## Malawi - beta wave
+
+No lag
+```{r malawi_beta_wave}
 mwi_cases_ipd_restrictions_beta <- mwi_cases_ipd_restrictions %>% filter(date > "2020-12-01" & date < "2021-04-01") 
 
 m1_beta <- lme(number_introductions ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions_beta)
 summary(m1_beta)
+```
 
+Lead of 14 days on introductions
+```{r malawi_beta_wave_lead14}
+m1_beta_lead14 <- lme(number_introductions_lead14 ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions_beta)
+summary(m1_beta_lead14)
+```
+
+
+Lead of 7 days on introductions
+```{r malawi_beta_lead7}
+
+m1_beta_lead7 <- lme(number_introductions_lead7 ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions_beta)
+summary(m1_beta_lead7)
+```
+
+## Malawi - delta wave
+
+No lag
+
+```{r malawi_delta_wave}
 mwi_cases_ipd_restrictions_delta <- mwi_cases_ipd_restrictions %>% filter(date > "2021-04-01" & date < "2021-10-01") 
 
 m1_delta <- lme(number_introductions ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions_delta)
 summary(m1_delta)
+```
+
+Lead of 14 days on introductions
+```{r malawi_delta_lead14}
+
+m1_delta_lead14 <- lme(number_introductions_lead14 ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions_delta)
+summary(m1_delta_lead14)
+```
 
 
+Lead of 7 days on introductions
+```{r malawi_delta_lead7}
+
+m1_delta_lead7 <- lme(number_introductions_lead7 ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = mwi_cases_ipd_restrictions_delta)
+summary(m1_delta_lead7)
+```
+
+## all countries entire pandemic
+```{r all_countries_entire_pandemic}
 m2 <- lme(number_introductions ~ date + international_travel_controls, random = ~ date | iso_code, correlation = corAR1(form = ~ date | iso_code), data = cases_ipd_restrictions)
 summary(m2)
-
-lme(number_introductions ~ date + international_travel_controls, correlation = corAR1(form = ~ date), data = mwi_cases_ipd_restrictions)
 ```
